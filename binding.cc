@@ -39,11 +39,15 @@
   ASSERT_BUFFER_MIN_LENGTH(name, var##_buf, length) \
   type *var = (type *) node::Buffer::Data(var##_buf);
 
+#define ASSERT_BUFFER_CAST_PP(name, var, type, length) \
+  ASSERT_BUFFER_MIN_LENGTH(name, var##_buf, length) \
+  type **var = (type **) node::Buffer::Data(var##_buf);
+
 #define PTR_WIDTH sizeof(uintptr_t)
 
 NAN_METHOD(sqlite3_open) {
   const char *filename = *Nan::Utf8String(info[0]);
-  ASSERT_BUFFER_CAST(info[1], ppDb, sqlite3*, PTR_WIDTH)
+  ASSERT_BUFFER_CAST_PP(info[1], ppDb, sqlite3, PTR_WIDTH)
 
   CALL_SQLITE(sqlite3_open(filename, ppDb))
 }
@@ -51,7 +55,7 @@ NAN_METHOD(sqlite3_open) {
 NAN_METHOD(sqlite3_prepare) {
   ASSERT_BUFFER_CAST(info[0], ppDb, sqlite3, PTR_WIDTH)
   const char *sql = *Nan::Utf8String(info[1]);
-  ASSERT_BUFFER_CAST(info[2], ppStmt, sqlite3_stmt*, PTR_WIDTH)
+  ASSERT_BUFFER_CAST_PP(info[2], ppStmt, sqlite3_stmt, PTR_WIDTH)
 
   CALL_SQLITE(sqlite3_prepare(ppDb, sql, -1, ppStmt, NULL))
 }
