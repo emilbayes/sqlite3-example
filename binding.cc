@@ -43,38 +43,87 @@
   ASSERT_BUFFER_MIN_LENGTH(name, var##_buf, length) \
   type **var = (type **) node::Buffer::Data(var##_buf);
 
+#define ASSERT_STRING(name, var) \
+  if (!name->IsString()) { \
+    Nan::ThrowError(#var " must be a number"); \
+    return; \
+  } \
+  const char *var = *Nan::Utf8String(name);
+
+#define ASSERT_INT(name, var) \
+  if (!name->IsNumber()) { \
+    Nan::ThrowError(#var " must be a number"); \
+    return; \
+  } \
+  int var = name->IntegerValue();
+
+#define ASSERT_UINT(name, var) \
+  if (!name->IsNumber()) { \
+    Nan::ThrowError(#var " must be a number"); \
+    return; \
+  } \
+  unsigned int var = name->IntegerValue();
+
 #define PTR_WIDTH sizeof(uintptr_t)
 
-NAN_METHOD(sqlite3_open) {
-  const char *filename = *Nan::Utf8String(info[0]);
+NAN_METHOD(sqlite3_open_v2) {
+  ASSERT_STRING(info[0], filename)
   ASSERT_BUFFER_CAST_PP(info[1], ppDb, sqlite3, PTR_WIDTH)
+  ASSERT_INT(info[2], flags)
 
-  CALL_SQLITE(sqlite3_open(filename, ppDb))
+  CALL_SQLITE(sqlite3_open_v2(filename, ppDb, flags, NULL))
 }
 
-NAN_METHOD(sqlite3_prepare) {
-  ASSERT_BUFFER_CAST(info[0], ppDb, sqlite3, PTR_WIDTH)
-  const char *sql = *Nan::Utf8String(info[1]);
-  ASSERT_BUFFER_CAST_PP(info[2], ppStmt, sqlite3_stmt, PTR_WIDTH)
+NAN_METHOD(sqlite3_prepare_v3) {
+  ASSERT_BUFFER_CAST_PP(info[0], ppDb, sqlite3, PTR_WIDTH)
+  ASSERT_STRING(info[1], sql)
+  ASSERT_UINT(info[2], prepFlags)
+  ASSERT_BUFFER_CAST_PP(info[3], ppStmt, sqlite3_stmt, PTR_WIDTH)
 
-  CALL_SQLITE(sqlite3_prepare(ppDb, sql, -1, ppStmt, NULL))
+  CALL_SQLITE(sqlite3_prepare_v3(*ppDb, sql, -1, prepFlags, ppStmt, NULL))
 }
 
-NAN_METHOD(sqlite3_close) {
-  ASSERT_BUFFER_CAST(info[0], ppDb, sqlite3, PTR_WIDTH)
+NAN_METHOD(sqlite3_step) {
+  ASSERT_BUFFER_CAST_PP(info[0], ppStmt, sqlite3_stmt, PTR_WIDTH)
 
-  CALL_SQLITE(sqlite3_close(ppDb))
+  CALL_SQLITE(sqlite3_step(*ppStmt))
+}
+
+NAN_METHOD(sqlite3_close_v2) {
+  ASSERT_BUFFER_CAST_PP(info[0], ppDb, sqlite3, PTR_WIDTH)
+
+  CALL_SQLITE(sqlite3_close_v2(*ppDb))
 }
 
 NAN_METHOD(sqlite3_errmsg) {
-  ASSERT_BUFFER_CAST(info[0], ppDb, sqlite3, PTR_WIDTH)
+  ASSERT_BUFFER_CAST_PP(info[0], ppDb, sqlite3, PTR_WIDTH)
 
-  info.GetReturnValue().Set(LOCAL_STRING(sqlite3_errmsg(ppDb)));
+  info.GetReturnValue().Set(LOCAL_STRING(sqlite3_errmsg(*ppDb)));
 }
-
 
 NAN_MODULE_INIT(InitAll) {
   EXPORT_NUMBER(PTR_WIDTH)
+
+  EXPORT_NUMBER(SQLITE_OPEN_READONLY)
+  EXPORT_NUMBER(SQLITE_OPEN_READWRITE)
+  EXPORT_NUMBER(SQLITE_OPEN_CREATE)
+  EXPORT_NUMBER(SQLITE_OPEN_DELETEONCLOSE)
+  EXPORT_NUMBER(SQLITE_OPEN_EXCLUSIVE)
+  EXPORT_NUMBER(SQLITE_OPEN_AUTOPROXY)
+  EXPORT_NUMBER(SQLITE_OPEN_URI)
+  EXPORT_NUMBER(SQLITE_OPEN_MEMORY)
+  EXPORT_NUMBER(SQLITE_OPEN_MAIN_DB)
+  EXPORT_NUMBER(SQLITE_OPEN_TEMP_DB)
+  EXPORT_NUMBER(SQLITE_OPEN_TRANSIENT_DB)
+  EXPORT_NUMBER(SQLITE_OPEN_MAIN_JOURNAL)
+  EXPORT_NUMBER(SQLITE_OPEN_TEMP_JOURNAL)
+  EXPORT_NUMBER(SQLITE_OPEN_SUBJOURNAL)
+  EXPORT_NUMBER(SQLITE_OPEN_MASTER_JOURNAL)
+  EXPORT_NUMBER(SQLITE_OPEN_NOMUTEX)
+  EXPORT_NUMBER(SQLITE_OPEN_FULLMUTEX)
+  EXPORT_NUMBER(SQLITE_OPEN_SHAREDCACHE)
+  EXPORT_NUMBER(SQLITE_OPEN_PRIVATECACHE)
+  EXPORT_NUMBER(SQLITE_OPEN_WAL)
 
   EXPORT_NUMBER(SQLITE_OK)
   EXPORT_NUMBER(SQLITE_ERROR)
@@ -108,9 +157,9 @@ NAN_MODULE_INIT(InitAll) {
   EXPORT_NUMBER(SQLITE_ROW)
   EXPORT_NUMBER(SQLITE_DONE)
 
-  EXPORT_FUNCTION(sqlite3_open)
-  EXPORT_FUNCTION(sqlite3_prepare)
-  EXPORT_FUNCTION(sqlite3_close)
+  EXPORT_FUNCTION(sqlite3_open_v2)
+  EXPORT_FUNCTION(sqlite3_prepare_v3)
+  EXPORT_FUNCTION(sqlite3_close_v2)
   EXPORT_FUNCTION(sqlite3_errmsg)
 }
 
